@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.dpsk.museum-wallpapers",
+  "name": "Museum Wallpapers",
+  "version": "0.1.0",
+  "author": "dpsk",
+  "license": "MIT",
+  "description": "Endless public-domain paintings from museums worldwide as your wallpaper, with the title, artist and story one click away.",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Museum Wallpapers",
+    "description": "The current painting: hover for title and artist, click for the story, middle-click for the next one.",
+    "category": "Appearance",
+    "aliases": [
+      "wallpaper",
+      "painting",
+      "art",
+      "museum",
+      "background"
+    ],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "intervalMinutes": 60,
+      "placard": "bottom-right",
+      "notifyOnChange": false,
+      "language": "en",
+      "saveDir": "~/Pictures/Wallpapers/Museum",
+      "prefetchCount": 3,
+      "fit": "blur",
+      "fame": "famous"
+    },
+    "schema": [
+      {
+        "key": "intervalMinutes",
+        "type": "integer",
+        "label": "Change every (minutes)",
+        "min": 0,
+        "max": 10080,
+        "step": 5,
+        "defaultValue": 60,
+        "description": "How often a new painting is shown. 0 changes it only on demand (Next button, middle click, or IPC)."
+      },
+      {
+        "key": "fame",
+        "type": "enum",
+        "label": "Artists",
+        "options": [
+          "famous",
+          "known",
+          "any"
+        ],
+        "defaultValue": "famous",
+        "description": "famous: about 280 painters with articles in 60+ Wikipedias. known: about 1200 painters (30+ Wikipedias). any: every painter. An artist you filter by is always shown."
+      },
+      {
+        "key": "fit",
+        "type": "enum",
+        "label": "Paintings that are not 16:9",
+        "options": [
+          "blur",
+          "auto",
+          "wall",
+          "cover"
+        ],
+        "defaultValue": "blur",
+        "description": "blur: the whole painting, framed by a blurred copy of itself. auto: fill the screen, but blur-frame when filling would crop more than 10%. wall: the whole painting on a dark wall. cover: fill the screen, cropping the edges."
+      },
+      {
+        "key": "placard",
+        "type": "enum",
+        "label": "Desktop placard",
+        "options": [
+          "off",
+          "bottom-right",
+          "bottom-left",
+          "top-right",
+          "top-left"
+        ],
+        "defaultValue": "bottom-right",
+        "description": "A small museum-style label with title, artist and year in a corner of the desktop, under your windows. Set to off to hide it."
+      },
+      {
+        "key": "notifyOnChange",
+        "type": "boolean",
+        "label": "Notify on change",
+        "defaultValue": false,
+        "description": "Show a notification with the painting's title, artist and summary each time it changes."
+      },
+      {
+        "key": "language",
+        "type": "string",
+        "label": "Wikipedia language",
+        "defaultValue": "en",
+        "description": "Language code for titles and summaries, such as en, de, fr or ru. Falls back to English when there is no article."
+      },
+      {
+        "key": "saveDir",
+        "type": "path",
+        "label": "Saved paintings folder",
+        "defaultValue": "~/Pictures/Wallpapers/Museum",
+        "description": "Where Save copies the current painting. Also used as an offline fallback."
+      },
+      {
+        "key": "prefetchCount",
+        "type": "integer",
+        "label": "Paintings kept ready",
+        "min": 1,
+        "max": 10,
+        "step": 1,
+        "defaultValue": 3,
+        "description": "How many paintings are downloaded ahead, so Next is instant even when pressed several times in a row."
+      }
+    ]
+  }
+}
