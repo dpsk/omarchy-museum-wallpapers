@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.dpsk.museum-wallpapers",
   "name": "Museum Wallpapers",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "dpsk",
   "license": "MIT",
   "description": "Endless public-domain paintings from museums worldwide as your wallpaper, with the title, artist and story one click away.",

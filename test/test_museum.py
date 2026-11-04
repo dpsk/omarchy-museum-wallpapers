@@ -1,5 +1,7 @@
+import contextlib
 import http.client
 import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -569,6 +571,27 @@ class SwitchTest(unittest.TestCase):
             museum.refit(museum.normalize_config({"saveDir": self.config["saveDir"], "fit": "blur"}))
         set_background.assert_not_called()
         self.assertFalse(museum.status(self.config)["active"])
+
+    def test_saving_twice_keeps_one_copy(self):
+        painting = self.cache / "commons-5.jpg"
+        painting.write_bytes(b"jpg")
+        museum.write_json(painting.with_suffix(".json"), {"id": "Q1", "title": "Poppies", "artist": "Claude Monet"})
+        self.set_link(painting)
+        museum.cmd_keep(self.config, None)
+        museum.cmd_keep(self.config, None)
+        saved = Path(self.config["saveDir"])
+        self.assertEqual(sorted(p.name for p in saved.glob("*.jpg")), ["claude-monet-poppies.jpg"])
+        self.assertEqual(list(museum.saved_index(self.config)), ["claude-monet-poppies.jpg"])
+
+    def test_filter_change_leaves_downloads_alone(self):
+        queue = self.cache / "queue"
+        queue.mkdir()
+        part = queue / "commons-7.jpg.123.part"
+        part.write_bytes(b"half")
+        args = mock.Mock(action="clear", switch=False)
+        with contextlib.redirect_stdout(io.StringIO()):
+            museum.cmd_filter(self.config, args)
+        self.assertTrue(part.exists())
 
 
 if __name__ == "__main__":

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 2026-11-04
+
+- A filter change no longer cuts off a painting that is being downloaded.
+- Two quick Save clicks no longer save the painting twice or lose an entry
+  from the collection index.
+
 ## 0.1.0 — 2026-11-04
 
 - Endless public-domain paintings listed on Wikidata and shown from their

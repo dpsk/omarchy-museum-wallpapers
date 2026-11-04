@@ -39,7 +39,7 @@ import urllib.request
 from pathlib import Path
 
 PLUGIN_ID = "io.github.dpsk.museum-wallpapers"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 USER_AGENT = f"omarchy-museum-wallpapers/{VERSION} (https://github.com/dpsk/omarchy-museum-wallpapers)"
 
 COMMONS_API = os.environ.get("MUSEUM_WALLPAPERS_COMMONS_API", "https://commons.wikimedia.org/w/api.php")
@@ -1294,6 +1294,13 @@ def credit_line(name, info):
 
 
 def cmd_keep(config, _args):
+    # Each Save click runs its own helper; one at a time, so a double click
+    # cannot save twice or lose an index entry.
+    with lock(".save.lock"):
+        keep(config)
+
+
+def keep(config):
     image = current_painting()
     if not image or image.parent != CACHE:
         return
@@ -1344,10 +1351,10 @@ def cmd_filter(config, args):
         if args.years:
             override["yearFrom"], override["yearTo"] = parse_years(args.years)
         write_json(path, override)
-    with lock():
-        for image in QUEUE.glob("*") if QUEUE.exists() else []:
-            image.unlink(missing_ok=True)
-        (CACHE / ".prefetch-failed.json").unlink(missing_ok=True)
+    # The queue is not emptied here: paintings fetched for the old filter no
+    # longer match the queue key and are dropped by the next switch, and a
+    # download in progress finishes instead of failing half way.
+    (CACHE / ".prefetch-failed.json").unlink(missing_ok=True)
     if args.switch:
         cmd_next(config, args)
     else:
