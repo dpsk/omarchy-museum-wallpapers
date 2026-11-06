@@ -50,7 +50,8 @@ To use it without the widget, remove the widget from the bar; the service keeps
 rotating paintings. Requires `python3` (standard library only), ImageMagick for
 framing (both ship with Omarchy) and network access to Wikimedia.
 
-The first painting appears within a minute. A theme switch sets the theme's own
+The first painting appears within seconds: the painter lists ship with the
+plugin. A theme switch sets the theme's own
 background; the plugin takes over again at the next interval.
 
 ## Remove
@@ -101,7 +102,7 @@ bar widget entry (which Omarchy's widget settings editor writes) or an entry in
 | `language` | `"en"` | Wikipedia language for titles and summaries (`de`, `fr`, `ru`, …); falls back to English. |
 | `saveDir` | `~/Pictures/Wallpapers/Museum` | Where **Save** copies paintings (with a `CREDITS.md` line). Also the offline fallback: without network, a painting from here or from the download cache is shown. |
 | `filters` | none | See below. |
-| `prefetchCount` | `3` | Paintings downloaded ahead, so several **Next** presses in a row are instant. |
+| `prefetchCount` | `6` | Paintings downloaded ahead, so several **Next** presses in a row are instant. |
 | `cacheSize` | `24` | Downloaded paintings kept in `~/.cache/museum-wallpapers`. |
 | `fame` | `"famous"` | `famous`, `known` or `any`; see [How famous the painters are](#how-famous-the-painters-are). Also settable from the popup. |
 | `fit` | `"blur"` | `blur`, `auto`, `wall` or `cover`; see [Paintings that are not 16:9](#paintings-that-are-not-169). Also settable from the popup ("Fill" is `cover`). |
@@ -121,8 +122,11 @@ by how many Wikipedia language editions have an article on the painter
 
 Only scans large enough for your screen are shown, so the usable share is
 smaller. An artist you filter by (or pick with **More by …**) is shown however
-famous they are. The painter list and each pool are fetched from Wikidata once
-a week (the first fetch takes up to half a minute) and cached. The count also
+famous they are. The painter lists for `"famous"` and `"known"` ship with the
+plugin, so the first painting does not wait for Wikidata; a detached helper
+refreshes them in the background once a week (other filters' pools are fetched
+from Wikidata when first used, which takes up to half a minute, and cached).
+The count also
 rewards fame outside painting, so a few famous people who painted as a side
 pursuit are included.
 
@@ -216,6 +220,9 @@ filter, name lookups) and images in `~/.cache/museum-wallpapers`.
   error; `journalctl --user | grep museum-wallpapers` shows helper output.
 - **The placard is not visible:** it sits under windows, so it shows on an
   empty workspace; it hides when the background is not from this plugin.
+- **Next feels slow:** `journalctl --user | grep "museum-wallpapers: timing"`
+  shows how long each stage (search, download, framing, setting the
+  background) took, and which thread did it.
 - **Replacement bars:** the widget needs Omarchy's built-in bar; bars from
   other plugins do not give widgets access to plugin services.
 - **After editing the plugin's QML:** run `omarchy restart shell` (the service
@@ -226,6 +233,7 @@ filter, name lookups) and images in `~/.cache/museum-wallpapers`.
 ```bash
 make check   # unit tests, py_compile, qmllint, omarchy-plugin-validate
 make dev     # copy the working tree over the installed plugin
+make seed    # refresh the built-in painter lists in seed/ from Wikidata (by hand, before a release)
 ```
 
 ## License

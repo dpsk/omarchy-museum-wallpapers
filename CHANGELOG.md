@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.2 — 2026-11-06
+
+- Next is fast: paintings are downloaded two at a time, framed ahead of time,
+  and a Next with an empty queue waits for the download already under way
+  instead of starting another. Thumbnails are requested at the standard
+  widths Wikimedia keeps ready (1280, 1920, 3840 px), which avoids slow,
+  rate-limited on-demand renders. Candidates are checked by size alone, and
+  Commons' file description is fetched only for the painting picked, which
+  makes a search round about 20 times faster (2 s instead of 30 s).
+- A framed painting is re-framed within a minute when the screen size changes
+  (a docked or undocked laptop), paintings framed ahead are re-framed for the
+  new size, and the previous one is kept while the background fades.
+- No wait on first run: the painter lists for `fame: "famous"` and `"known"`
+  now ship with the plugin and are refreshed weekly by a detached helper
+  (`museum.py refresh-pools`).
+- `prefetchCount` now defaults to 6.
+- Painting details load in parallel; titles lose invisible and odd space
+  characters; long titles are cut on a word boundary; a scan or upload date
+  on Commons is no longer shown as the painting's year.
+- Stage timings go to the journal, including the background downloads:
+  `journalctl --user | grep "museum-wallpapers: timing"`.
+
 ## 0.1.1 — 2026-11-04
 
 - A filter change no longer cuts off a painting that is being downloaded.

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.dpsk.museum-wallpapers",
   "name": "Museum Wallpapers",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "dpsk",
   "license": "MIT",
   "description": "Endless public-domain paintings from museums worldwide as your wallpaper, with the title, artist and story one click away.",
@@ -34,7 +34,7 @@
       "notifyOnChange": false,
       "language": "en",
       "saveDir": "~/Pictures/Wallpapers/Museum",
-      "prefetchCount": 3,
+      "prefetchCount": 6,
       "fit": "blur",
       "fame": "famous"
     },
@@ -116,7 +116,7 @@
         "min": 1,
         "max": 10,
         "step": 1,
-        "defaultValue": 3,
+        "defaultValue": 6,
         "description": "How many paintings are downloaded ahead, so Next is instant even when pressed several times in a row."
       }
     ]
