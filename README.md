@@ -34,7 +34,7 @@ artist, year, museum and a short story one click away.
 
 | Mode | What it does | How to turn it on |
 | --- | --- | --- |
-| Bar widget | Palette icon; hover for "Title — Artist", click for a card with a preview, the summary, **Next**, **Read more**, **Save**, quick filters, and the change interval, artist fame and fit settings; middle-click for the next painting | Add `io.github.dpsk.museum-wallpapers` to the bar (see Install) |
+| Bar widget | Palette icon; hover for "Title — Artist", click for a card with a preview, the summary, **Next**, **Read more**, **Save** and quick filters; right-click (or the gear in the card) for the settings: change interval, artists, fit, language and the language preference; middle-click for the next painting | Add `io.github.dpsk.museum-wallpapers` to the bar (see Install) |
 | Desktop placard | A small museum-style label (title, artist, year, museum) in a corner of the desktop, under your windows, click-through | On by default (bottom right); `"placard": "off"` hides it, or pick another corner |
 | Notification on change | Title, artist, museum and summary each time the painting changes, with a **Read more** action | Off by default; `"notifyOnChange": true` |
 | Hotkeys / IPC | Open the card (or a notification when the widget is not on the bar), skip, save, open the article | Bind `omarchy-shell museum-wallpapers …` (see below) |
@@ -104,7 +104,9 @@ bar widget entry (which Omarchy's widget settings editor writes) or an entry in
 | `filters` | none | See below. |
 | `prefetchCount` | `6` | Paintings downloaded ahead, so several **Next** presses in a row are instant. |
 | `cacheSize` | `24` | Downloaded paintings kept in `~/.cache/museum-wallpapers`. |
-| `fame` | `"famous"` | `famous`, `known` or `any`; see [How famous the painters are](#how-famous-the-painters-are). Also settable from the popup. |
+| `fame` | `"famous"` | `famous`, `known` or `any`; see [How famous the painters are](#how-famous-the-painters-are). Also in the settings panel. |
+| `localized` | `"prefer"` | Paintings described in your language (see `localizedBy`): `prefer` shows them first, `only` shows nothing else, `all` has no preference. For English almost every painting counts; for other languages far fewer do (Russian: about 1 in 5 titles, 1 in 8 articles among famous painters' works). Also in the settings panel. |
+| `localizedBy` | `"title"` | What "described in your language" means: `title` (Wikidata has the painting's title in it) or `article` (Wikipedia has an article about the painting in it). Also in the settings panel. |
 | `fit` | `"blur"` | `blur`, `auto`, `wall` or `cover`; see [Paintings that are not 16:9](#paintings-that-are-not-169). Also settable from the popup ("Fill" is `cover`). |
 | `minRatio`, `maxRatio` | `1.3`, `2.0` | Accepted width/height ratios. |
 
@@ -195,6 +197,7 @@ o.bind("SUPER + CTRL + ALT + N", "Next painting", "omarchy-shell museum-wallpape
 | --- | --- |
 | `omarchy-shell museum-wallpapers info` | Toggle the card on the bar, or show a notification without the widget |
 | `omarchy-shell museum-wallpapers next` | Next painting (prefetched, so usually instant); presses while one is still switching are ignored |
+| `omarchy-shell museum-wallpapers settings` | Toggle the settings panel (needs the widget on the bar) |
 | `omarchy-shell museum-wallpapers notify` | Notification about the current painting |
 | `omarchy-shell museum-wallpapers open` | Open its Wikipedia article (or Commons page) |
 | `omarchy-shell museum-wallpapers keep` | Save it to `saveDir` |

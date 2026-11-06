@@ -44,7 +44,16 @@
   "nm_only_current": "the only matching painting is already showing",
   "nm_too_small": "no matching painting is large enough for this screen",
   "nm_years": "no painting from these years turned up among random scans",
-  "nm_none": "no suitable painting found"
+  "nm_none": "no suitable painting found",
+  "settings": "Settings",
+  "localized": "In my language",
+  "localized_by": "Described means",
+  "loc_all": "All",
+  "loc_prefer": "First",
+  "loc_only": "Only",
+  "by_title": "A title",
+  "by_article": "An article",
+  "nm_localized": "no painting described in this language"
  },
  "ru": {
   "app": "Museum Wallpapers",
@@ -91,7 +100,16 @@
   "nm_only_current": "единственная подходящая картина уже на экране",
   "nm_too_small": "ни одна картина под фильтр не подходит по размеру для этого экрана",
   "nm_years": "среди случайных сканов не нашлось картин этих лет",
-  "nm_none": "подходящая картина не нашлась"
+  "nm_none": "подходящая картина не нашлась",
+  "settings": "Настройки",
+  "localized": "На моём языке",
+  "localized_by": "Описанной считать",
+  "loc_all": "Все",
+  "loc_prefer": "Сначала",
+  "loc_only": "Только",
+  "by_title": "Есть название",
+  "by_article": "Есть статья",
+  "nm_localized": "нет картин, описанных на этом языке"
  },
  "uk": {
   "app": "Museum Wallpapers",
@@ -138,7 +156,16 @@
   "nm_only_current": "єдина відповідна картина вже на екрані",
   "nm_too_small": "жодна відповідна картина не підходить за розміром для цього екрана",
   "nm_years": "серед випадкових сканів не знайшлося картин цих років",
-  "nm_none": "відповідної картини не знайшлося"
+  "nm_none": "відповідної картини не знайшлося",
+  "settings": "Налаштування",
+  "localized": "Моєю мовою",
+  "localized_by": "Описаною вважати",
+  "loc_all": "Усі",
+  "loc_prefer": "Спочатку",
+  "loc_only": "Лише",
+  "by_title": "Є назва",
+  "by_article": "Є стаття",
+  "nm_localized": "немає картин, описаних цією мовою"
  },
  "de": {
   "app": "Museum Wallpapers",
@@ -185,7 +212,16 @@
   "nm_only_current": "das einzige passende Gemälde wird schon angezeigt",
   "nm_too_small": "kein passendes Gemälde ist groß genug für diesen Bildschirm",
   "nm_years": "unter den zufälligen Scans war kein Gemälde aus diesen Jahren",
-  "nm_none": "kein passendes Gemälde gefunden"
+  "nm_none": "kein passendes Gemälde gefunden",
+  "settings": "Einstellungen",
+  "localized": "In meiner Sprache",
+  "localized_by": "Beschrieben heißt",
+  "loc_all": "Alle",
+  "loc_prefer": "Zuerst",
+  "loc_only": "Nur",
+  "by_title": "Ein Titel",
+  "by_article": "Ein Artikel",
+  "nm_localized": "kein Gemälde in dieser Sprache beschrieben"
  },
  "fr": {
   "app": "Museum Wallpapers",
@@ -232,7 +268,16 @@
   "nm_only_current": "le seul tableau correspondant est déjà affiché",
   "nm_too_small": "aucun tableau correspondant n’est assez grand pour cet écran",
   "nm_years": "aucun tableau de ces années parmi les numérisations au hasard",
-  "nm_none": "aucun tableau convenable trouvé"
+  "nm_none": "aucun tableau convenable trouvé",
+  "settings": "Réglages",
+  "localized": "Dans ma langue",
+  "localized_by": "Décrit signifie",
+  "loc_all": "Tous",
+  "loc_prefer": "D’abord",
+  "loc_only": "Seulement",
+  "by_title": "Un titre",
+  "by_article": "Un article",
+  "nm_localized": "aucun tableau décrit dans cette langue"
  },
  "es": {
   "app": "Museum Wallpapers",
@@ -279,7 +324,16 @@
   "nm_only_current": "el único cuadro que coincide ya está en pantalla",
   "nm_too_small": "ningún cuadro que coincide es lo bastante grande para esta pantalla",
   "nm_years": "entre los escaneos al azar no apareció ningún cuadro de esos años",
-  "nm_none": "no se encontró un cuadro adecuado"
+  "nm_none": "no se encontró un cuadro adecuado",
+  "settings": "Ajustes",
+  "localized": "En mi idioma",
+  "localized_by": "Descrito significa",
+  "loc_all": "Todos",
+  "loc_prefer": "Primero",
+  "loc_only": "Solo",
+  "by_title": "Un título",
+  "by_article": "Un artículo",
+  "nm_localized": "ningún cuadro descrito en este idioma"
  },
  "it": {
   "app": "Museum Wallpapers",
@@ -326,7 +380,16 @@
   "nm_only_current": "l’unico dipinto corrispondente è già sullo schermo",
   "nm_too_small": "nessun dipinto corrispondente è abbastanza grande per questo schermo",
   "nm_years": "tra le scansioni casuali non c’era nessun dipinto di quegli anni",
-  "nm_none": "nessun dipinto adatto trovato"
+  "nm_none": "nessun dipinto adatto trovato",
+  "settings": "Impostazioni",
+  "localized": "Nella mia lingua",
+  "localized_by": "Descritto vuol dire",
+  "loc_all": "Tutti",
+  "loc_prefer": "Prima",
+  "loc_only": "Solo",
+  "by_title": "Un titolo",
+  "by_article": "Un articolo",
+  "nm_localized": "nessun dipinto descritto in questa lingua"
  },
  "nl": {
   "app": "Museum Wallpapers",
@@ -373,7 +436,16 @@
   "nm_only_current": "het enige passende schilderij staat al op het scherm",
   "nm_too_small": "geen passend schilderij is groot genoeg voor dit scherm",
   "nm_years": "geen schilderij uit die jaren tussen de willekeurige scans",
-  "nm_none": "geen geschikt schilderij gevonden"
+  "nm_none": "geen geschikt schilderij gevonden",
+  "settings": "Instellingen",
+  "localized": "In mijn taal",
+  "localized_by": "Beschreven betekent",
+  "loc_all": "Alle",
+  "loc_prefer": "Eerst",
+  "loc_only": "Alleen",
+  "by_title": "Een titel",
+  "by_article": "Een artikel",
+  "nm_localized": "geen schilderij beschreven in deze taal"
  },
  "pl": {
   "app": "Museum Wallpapers",
@@ -420,7 +492,16 @@
   "nm_only_current": "jedyny pasujący obraz jest już na ekranie",
   "nm_too_small": "żaden pasujący obraz nie jest dość duży dla tego ekranu",
   "nm_years": "wśród losowych skanów nie było obrazów z tych lat",
-  "nm_none": "nie znaleziono odpowiedniego obrazu"
+  "nm_none": "nie znaleziono odpowiedniego obrazu",
+  "settings": "Ustawienia",
+  "localized": "W moim języku",
+  "localized_by": "Opisany to",
+  "loc_all": "Wszystkie",
+  "loc_prefer": "Najpierw",
+  "loc_only": "Tylko",
+  "by_title": "Jest tytuł",
+  "by_article": "Jest artykuł",
+  "nm_localized": "brak obrazów opisanych w tym języku"
  },
  "pt": {
   "app": "Museum Wallpapers",
@@ -467,6 +548,15 @@
   "nm_only_current": "a única pintura correspondente já está na tela",
   "nm_too_small": "nenhuma pintura correspondente é grande o suficiente para esta tela",
   "nm_years": "entre as digitalizações aleatórias não apareceu nenhuma pintura desses anos",
-  "nm_none": "não foi encontrada uma pintura adequada"
+  "nm_none": "não foi encontrada uma pintura adequada",
+  "settings": "Configurações",
+  "localized": "No meu idioma",
+  "localized_by": "Descrita significa",
+  "loc_all": "Todas",
+  "loc_prefer": "Primeiro",
+  "loc_only": "Só",
+  "by_title": "Um título",
+  "by_article": "Um artigo",
+  "nm_localized": "nenhuma pintura descrita neste idioma"
  }
 }

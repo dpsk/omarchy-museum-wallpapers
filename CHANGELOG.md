@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.4 — 2026-11-06
+
+- Prefer paintings described in your language: a new setting shows those with
+  a title (or a Wikipedia article) in the chosen language first, only, or
+  with no preference; on by default ("prefer").
+- The card is about the painting: settings moved to their own panel, opened
+  with a right click on the bar icon, the gear in the card, or
+  `omarchy-shell museum-wallpapers settings`; the card shows a longer story
+  (up to six sentences).
+
 ## 0.1.3 — 2026-11-06
 
 - The interface speaks ten languages: English, Русский, Українська, Deutsch, Français, Español, Italiano, Nederlands, Polski and Português. The popup,

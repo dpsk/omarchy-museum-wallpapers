@@ -23,6 +23,8 @@ BarWidget {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
   property bool popupOpen: false
+  // Right click (or the gear in the card): the settings panel.
+  property bool settingsOpen: false
 
   // Interface text from museum.py (strings.json, per the `language` setting);
   // the English given here is used until the first status arrives.
@@ -34,13 +36,18 @@ BarWidget {
   }
 
   readonly property var intervals: [
-    { minutes: 15, key: "interval_15", label: "15m" }, { minutes: 30, key: "interval_30", label: "30m" },
-    { minutes: 60, key: "interval_60", label: "1h" }, { minutes: 180, key: "interval_180", label: "3h" },
-    { minutes: 360, key: "interval_360", label: "6h" }, { minutes: 1440, key: "interval_1440", label: "1d" },
-    { minutes: 0, key: "interval_0", label: "Off" }
+    { value: 15, key: "interval_15", label: "15m" }, { value: 30, key: "interval_30", label: "30m" },
+    { value: 60, key: "interval_60", label: "1h" }, { value: 180, key: "interval_180", label: "3h" },
+    { value: 360, key: "interval_360", label: "6h" }, { value: 1440, key: "interval_1440", label: "1d" },
+    { value: 0, key: "interval_0", label: "Off" }
   ]
-  readonly property int intervalMinutes: service && service.config.intervalMinutes !== undefined
-    ? service.config.intervalMinutes : 60
+  readonly property var localizeds: [
+    { value: "all", key: "loc_all", label: "All" }, { value: "prefer", key: "loc_prefer", label: "First" },
+    { value: "only", key: "loc_only", label: "Only" }
+  ]
+  readonly property var localizedBys: [
+    { value: "title", key: "by_title", label: "A title" }, { value: "article", key: "by_article", label: "An article" }
+  ]
   readonly property var fames: [
     { value: "famous", key: "fame_famous", label: "Famous" }, { value: "known", key: "fame_known", label: "Known" },
     { value: "any", key: "fame_any", label: "Any" }
@@ -72,8 +79,9 @@ BarWidget {
     if (root.service) root.service.refreshSoon()
   }
 
-  function close() { popupOpen = false }
-  function togglePopup() { popupOpen = !popupOpen }
+  function close() { popupOpen = false; settingsOpen = false }
+  function togglePopup() { settingsOpen = false; popupOpen = !popupOpen }
+  function toggleSettings() { popupOpen = false; settingsOpen = !settingsOpen }
   function screenName() {
     try {
       var window = root.QsWindow.window
@@ -124,6 +132,8 @@ BarWidget {
     onClicked: function(mouse) {
       if (mouse.button === Qt.MiddleButton) {
         if (root.service) root.service.next()
+      } else if (mouse.button === Qt.RightButton) {
+        root.toggleSettings()
       } else {
         root.togglePopup()
       }
@@ -211,7 +221,7 @@ BarWidget {
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
         wrapMode: Text.Wrap
-        maximumLineCount: 9
+        maximumLineCount: 14
         elide: Text.ElideRight
         lineHeight: 1.15
         visible: text !== ""
@@ -261,6 +271,13 @@ BarWidget {
           visible: !!root.info && root.status.fromCache === true
           onClicked: if (root.service) root.service.keep()
         }
+
+        Button {
+          iconText: "󰒓"
+          tooltipText: root.tr("settings", "Settings")
+          foreground: root.foreground
+          onClicked: root.toggleSettings()
+        }
       }
 
       Flow {
@@ -287,94 +304,6 @@ BarWidget {
 
       Row {
         width: parent.width
-        spacing: Style.space(2)
-
-        Text {
-          id: intervalLabel
-          anchors.top: parent.top
-          topPadding: Style.space(4)
-          textFormat: Text.PlainText
-          text: root.tr("change_every", "Change every")
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          rightPadding: Style.space(4)
-        }
-
-        Flow {
-          width: parent.width - intervalLabel.width - parent.spacing
-          spacing: Style.space(2)
-
-          Repeater {
-            model: root.intervals
-
-            Button {
-              required property var modelData
-              text: root.tr(modelData.key, modelData.label)
-              foreground: root.foreground
-              fontSize: Style.font.caption
-              horizontalPadding: Style.space(6)
-              selected: root.intervalMinutes === modelData.minutes
-              onClicked: root.setSetting("intervalMinutes", modelData.minutes)
-            }
-          }
-        }
-      }
-
-      Repeater {
-        // Artists (fame), Fit and Language, laid out like the interval row above.
-        model: [
-          { key: "fame", configKey: "fame", titleKey: "artists", title: "Artists", choices: root.fames, fallback: "famous" },
-          { key: "fit", configKey: "fit", titleKey: "fit", title: "Fit", choices: root.fits, fallback: "blur" },
-          { key: "language", configKey: "languageSetting", titleKey: "language", title: "Language",
-            choices: root.languages, fallback: "auto" }
-        ]
-
-        Row {
-          id: choiceRow
-          required property var modelData
-          readonly property string current: root.service && root.service.config[modelData.configKey]
-            ? root.service.config[modelData.configKey] : modelData.fallback
-          width: parent.width
-          spacing: Style.space(2)
-
-          Text {
-            id: choiceLabel
-            anchors.top: parent.top
-            topPadding: Style.space(4)
-            width: intervalLabel.implicitWidth
-            textFormat: Text.PlainText
-            text: root.tr(choiceRow.modelData.titleKey, choiceRow.modelData.title)
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-          }
-
-          // Wraps: eleven language choices do not fit on one line.
-          Flow {
-            width: choiceRow.width - choiceLabel.width - choiceRow.spacing
-            spacing: Style.space(2)
-
-            Repeater {
-              model: choiceRow.modelData.choices
-
-              Button {
-                required property var modelData
-                text: modelData.key ? root.tr(modelData.key, modelData.label) : modelData.label
-                tooltipText: modelData.tip || ""
-                foreground: root.foreground
-                fontSize: Style.font.caption
-                horizontalPadding: Style.space(6)
-                selected: choiceRow.current === modelData.value
-                onClicked: root.setSetting(choiceRow.modelData.key, modelData.value)
-              }
-            }
-          }
-        }
-      }
-
-      Row {
-        width: parent.width
         spacing: Style.space(6)
         visible: !!root.activeFilter
 
@@ -395,6 +324,87 @@ BarWidget {
           tooltipText: root.tr("clear_filter", "Clear filter")
           foreground: root.foreground
           onClicked: if (root.service) root.service.clearFilter()
+        }
+      }
+    }
+  }
+
+  PopupCard {
+    id: settingsPopup
+    anchorItem: root
+    bar: root.bar
+    owner: root
+    open: root.settingsOpen
+    contentWidth: settingsPopup.fittedContentWidth(Style.space(380))
+    contentHeight: settingsPopup.fittedContentHeight(settingsColumn.implicitHeight)
+
+    Column {
+      id: settingsColumn
+      anchors.fill: parent
+      spacing: Style.space(10)
+
+      Text {
+        width: parent.width
+        textFormat: Text.PlainText
+        text: root.tr("settings", "Settings")
+        color: root.foreground
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.subtitle
+        font.bold: true
+      }
+
+      Repeater {
+        // Each setting: its name above a wrapping row of choices, so labels of
+        // any length and the eleven languages fit.
+        model: [
+          { key: "intervalMinutes", titleKey: "change_every", title: "Change every", choices: root.intervals, fallback: 60 },
+          { key: "fame", titleKey: "artists", title: "Artists", choices: root.fames, fallback: "famous" },
+          { key: "fit", titleKey: "fit", title: "Fit", choices: root.fits, fallback: "blur" },
+          { key: "language", configKey: "languageSetting", titleKey: "language", title: "Language",
+            choices: root.languages, fallback: "auto" },
+          { key: "localized", titleKey: "localized", title: "In my language", choices: root.localizeds,
+            fallback: "prefer" },
+          { key: "localizedBy", titleKey: "localized_by", title: "Described means", choices: root.localizedBys,
+            fallback: "title" }
+        ]
+
+        Column {
+          id: choiceRow
+          required property var modelData
+          readonly property var configured: root.service ? root.service.config[modelData.configKey || modelData.key] : undefined
+          readonly property string current: String(configured !== undefined && configured !== null && configured !== ""
+            ? configured : modelData.fallback)
+          width: parent.width
+          spacing: Style.space(3)
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            text: root.tr(choiceRow.modelData.titleKey, choiceRow.modelData.title)
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          Flow {
+            width: parent.width
+            spacing: Style.space(2)
+
+            Repeater {
+              model: choiceRow.modelData.choices
+
+              Button {
+                required property var modelData
+                text: modelData.key ? root.tr(modelData.key, modelData.label) : modelData.label
+                tooltipText: modelData.tip || ""
+                foreground: root.foreground
+                fontSize: Style.font.caption
+                horizontalPadding: Style.space(6)
+                selected: choiceRow.current === String(modelData.value)
+                onClicked: root.setSetting(choiceRow.modelData.key, modelData.value)
+              }
+            }
+          }
         }
       }
     }

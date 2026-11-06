@@ -23,6 +23,10 @@ spec = importlib.util.spec_from_file_location("museum", ROOT / "museum.py")
 museum = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(museum)
 
+# The language preference asks Wikidata; tests stay offline unless they test it.
+REAL_DESCRIBED_IN = museum.described_in
+museum.described_in = lambda qids, config: None
+
 
 def load_seed_script():
     seed_spec = importlib.util.spec_from_file_location("seed_script", ROOT / "tools" / "seed.py")
@@ -229,6 +233,54 @@ class TextTest(unittest.TestCase):
 
 
 class EdgeCaseTest(unittest.TestCase):
+    def test_unknown_wiki_means_no_answer(self):
+        config = museum.normalize_config({"language": "nb", "localized": "only", "localizedBy": "article"})
+        unfiltered = {"Q1": {"sitelinks": {"enwiki": {}, "nowiki": {}}}}  # sitefilter ignored
+        with mock.patch.object(museum, "entities", return_value=unfiltered):
+            self.assertIsNone(REAL_DESCRIBED_IN({"Q1"}, config))
+        with mock.patch.object(museum, "entities", return_value={}):
+            self.assertIsNone(REAL_DESCRIBED_IN({"Q1"}, config))
+
+    def test_english_titles_need_no_check(self):
+        found = [({"pageid": 1}, "Q1")]
+        with mock.patch.object(museum, "described_in", side_effect=AssertionError("asked")):
+            self.assertEqual(museum.prefer_described(found, museum.normalize_config({"language": "en"})), found)
+
+    def test_status_shows_the_language_preference(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(museum, "STATE", Path(tmp)), \
+             mock.patch.object(museum, "CURRENT_LINK", Path(tmp) / "none"):
+            config = museum.status(museum.normalize_config({"localized": "only", "localizedBy": "article"}))["config"]
+        self.assertEqual((config["localized"], config["localizedBy"]), ("only", "article"))
+
+    def test_language_preference_orders_or_narrows_candidates(self):
+        found = [({"pageid": 1}, "Q1"), ({"pageid": 2}, "Q2"), ({"pageid": 3}, "Q3")]
+        answer = {"Q1": {"labels": {}, "sitelinks": {}},
+                  "Q2": {"labels": {"ru": {"value": "Девятый вал"}}, "sitelinks": {}},
+                  "Q3": {"labels": {"ru": {"value": "Гадалка"}}, "sitelinks": {"ruwiki": {"title": "Гадалка"}}}}
+        prefer = museum.normalize_config({"language": "ru", "localized": "prefer"})
+        only = museum.normalize_config({"language": "ru", "localized": "only"})
+        by_article = museum.normalize_config({"language": "ru", "localized": "only", "localizedBy": "article"})
+        with mock.patch.object(museum, "described_in", REAL_DESCRIBED_IN), \
+             mock.patch.object(museum, "entities", return_value=answer):
+            self.assertEqual([q for _, q in museum.prefer_described(found, prefer)], ["Q2", "Q3", "Q1"])
+            self.assertEqual([q for _, q in museum.prefer_described(found, only)], ["Q2", "Q3"])
+            self.assertEqual([q for _, q in museum.prefer_described(found, by_article)], ["Q3"])
+        everyone = museum.normalize_config({"localized": "all"})
+        self.assertEqual(museum.prefer_described(found, everyone), found)
+        with mock.patch.object(museum, "described_in", REAL_DESCRIBED_IN), \
+             mock.patch.object(museum, "entities", side_effect=OSError("offline")), \
+             contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(museum.prefer_described(found, only), found)  # no answer: no preference
+
+    def test_language_preference_settings(self):
+        config = museum.normalize_config({})
+        self.assertEqual((config["localized"], config["localizedBy"]), ("prefer", "title"))
+        odd = museum.normalize_config({"localized": "never", "localizedBy": 3})
+        self.assertEqual((odd["localized"], odd["localizedBy"]), ("prefer", "title"))
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(museum, "STATE", Path(tmp)):
+            self.assertNotEqual(museum.queue_key(museum.normalize_config({"localized": "only"})),
+                                museum.queue_key(museum.normalize_config({"localized": "all"})))
+
     def test_broken_strings_fall_back_to_english(self):
         with mock.patch.object(museum.json, "loads", side_effect=ValueError("broken")), \
              contextlib.redirect_stderr(io.StringIO()):
@@ -1116,6 +1168,34 @@ class SwitchTest(unittest.TestCase):
             museum.refit(auto)
         set_background.assert_called_once_with(self.cache / "display" / "commons-5.auto.3840x2160.jpg")
         self.assertEqual(museum.read_json(self.state / "state.json")["screen"], "3840x2160")
+
+    def test_only_blames_the_language_only_when_it_dropped_something(self):
+        page = {"pageid": 7, "title": "File:X.jpg", "imageinfo": [{"width": 4000, "height": 2500}]}
+        only = museum.normalize_config({"saveDir": self.config["saveDir"], "fit": "cover", "fame": "any",
+                                        "language": "ru", "localized": "only"})
+        filters = museum.normalize_filters({"artists": ["Q296"]})
+        with mock.patch.object(museum, "active_filters", return_value=filters), \
+             mock.patch.object(museum, "entity_pool", return_value=[["Q1", "File:X.jpg"]]):
+            with mock.patch.object(museum, "filtered_candidates", return_value=[(page, "Q1")]), \
+                 mock.patch.object(museum, "described_in", return_value=set()):
+                with self.assertRaises(museum.NoMatch) as caught:
+                    museum.fetch_next(only)
+                self.assertEqual(str(caught.exception), museum.t("nm_localized", "ru"))
+            with mock.patch.object(museum, "filtered_candidates", return_value=[]):
+                with self.assertRaises(museum.NoMatch) as caught:
+                    museum.fetch_next(only)
+                self.assertEqual(str(caught.exception), museum.t("nm_too_small", "ru"))
+
+    def test_the_fallback_relaxes_only(self):
+        page = {"pageid": 7, "title": "File:X.jpg", "imageinfo": [{"width": 4000, "height": 2500}]}
+        only = museum.normalize_config({"saveDir": self.config["saveDir"], "fit": "cover", "fame": "any",
+                                        "language": "ru", "localized": "only"})
+        with mock.patch.object(museum, "random_candidates", return_value=[(page, "Q1")]), \
+             mock.patch.object(museum, "described_in", return_value=set()), \
+             mock.patch.object(museum, "enqueue", return_value=self.cache / "queue" / "commons-7.jpg") as enqueue:
+            museum.fetch_next(only, unfiltered=True)
+        enqueue.assert_called_once()
+        self.assertEqual(enqueue.call_args.args[3], museum.queue_key(only))  # still lands in the "only" queue
 
 
 if __name__ == "__main__":

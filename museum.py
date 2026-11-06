@@ -44,7 +44,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 PLUGIN_ID = "io.github.dpsk.museum-wallpapers"
-VERSION = "0.1.3"
+VERSION = "0.1.4"
 USER_AGENT = f"omarchy-museum-wallpapers/{VERSION} (https://github.com/dpsk/omarchy-museum-wallpapers)"
 
 COMMONS_API = os.environ.get("MUSEUM_WALLPAPERS_COMMONS_API", "https://commons.wikimedia.org/w/api.php")
@@ -106,6 +106,10 @@ DEFAULTS = {
     "prefetchCount": 6,
     "fit": "blur",
     "fame": "famous",
+    # Paintings with a title (or a Wikipedia article) in the chosen language:
+    # shown first ("prefer"), exclusively ("only"), or no preference ("all").
+    "localized": "prefer",
+    "localizedBy": "title",
     "minRatio": 1.3,
     "maxRatio": 2.0,
 }
@@ -270,6 +274,9 @@ def normalize_config(entry):
         config["fit"] = DEFAULTS["fit"]
     if not isinstance(config["fame"], str) or config["fame"] not in FAME:
         config["fame"] = DEFAULTS["fame"]
+    for key, allowed in (("localized", ("all", "prefer", "only")), ("localizedBy", ("title", "article"))):
+        if not isinstance(config[key], str) or config[key] not in allowed:
+            config[key] = DEFAULTS[key]
     config["filters"] = normalize_filters(config["filters"])
     config["saveDir"] = os.path.realpath(os.path.expanduser(str(config["saveDir"])))
     return config
@@ -329,9 +336,11 @@ def filter_key(filters):
 
 
 def queue_key(config):
-    """What a queued painting was fetched for: the active filter, the fame
-    setting and the language its title and summary are in."""
-    return filter_key({"filters": active_filters(config), "fame": config["fame"], "language": config["language"]})
+    """What a queued painting was fetched for: the active filter, the fame and
+    language-preference settings, and the language its title and summary are in."""
+    only = [config["localized"], config["localizedBy"]] if config["localized"] == "only" else None
+    return filter_key({"filters": active_filters(config), "fame": config["fame"], "language": config["language"],
+                       "localized": only})
 
 
 def has_entity_filters(filters):
@@ -884,7 +893,7 @@ def commons_description(markup):
     text = without_quickstatements(plain(markup))
     if len(text) < 40:
         return ""
-    return text[:400].rsplit(" ", 1)[0] + "…" if len(text) > 400 else text
+    return text[:600].rsplit(" ", 1)[0] + "…" if len(text) > 600 else text
 
 
 def first_sentences(text, count):
@@ -899,7 +908,7 @@ def wikipedia_summary(language, title):
     data = http_json(url)
     if data.get("type") == "disambiguation":
         return "", None
-    return first_sentences(data.get("extract", ""), 4), data.get("content_urls", {}).get("desktop", {}).get("page")
+    return first_sentences(data.get("extract", ""), 6), data.get("content_urls", {}).get("desktop", {}).get("page")
 
 
 def article(entity, language):
@@ -1105,6 +1114,41 @@ def enqueue(page, qid, config, key, note=None):
     return dest
 
 
+def described_in(qids, config):
+    """The paintings among `qids` with a title (or, with localizedBy "article",
+    a Wikipedia article) in the chosen language; None if Wikidata cannot say."""
+    language = config["language"]
+    site = f"{language.replace('-', '_')}wiki"
+    try:
+        found = entities(list(qids), props="labels|sitelinks", languages=language, site=site)
+    except Exception as exc:  # noqa: BLE001 - no preference rather than no painting
+        print(f"museum-wallpapers: language check failed: {exc}", file=sys.stderr)
+        return None
+    if not found:
+        return None  # an error answer (no entities at all)
+    if config["localizedBy"] == "article":
+        links = [e.get("sitelinks") or {} for e in found.values()]
+        # A wiki Wikidata does not know (nbwiki, pt_brwiki) is ignored by the
+        # filter, and every sitelink comes back: then it cannot say.
+        if any(set(link) - {site} for link in links):
+            return None
+        return {q for q, e in found.items() if site in (e.get("sitelinks") or {})}
+    return {q for q, e in found.items() if language in (e.get("labels") or {})}
+
+
+def prefer_described(found, config):
+    """Candidates reordered (or, with "only", narrowed) by the language setting."""
+    if config["localized"] == "all" or not found:
+        return found
+    if config["language"] == "en" and config["localized"] == "prefer" and config["localizedBy"] == "title":
+        return found  # nearly every painting has an English title: skip the request
+    described = described_in({qid for _, qid in found}, config)
+    if described is None:
+        return found
+    first = [c for c in found if c[1] in described]
+    return first if config["localized"] == "only" else first + [c for c in found if c[1] not in described]
+
+
 def fetch_next(config, unfiltered=False, note=None):
     """Download one new painting into the queue; returns its image path."""
     filters = active_filters(config)
@@ -1112,6 +1156,10 @@ def fetch_next(config, unfiltered=False, note=None):
     screen = screen_size()
     if unfiltered:
         filters = normalize_filters({})
+        # The fallback shows something: "only" becomes "prefer", rather than
+        # repeating the same search that just found nothing in the language.
+        if config["localized"] == "only":
+            config = {**config, "localized": "prefer"}
     filters, unknown = resolve_filters(filters, config["language"])
     if unknown:
         raise NoMatch(t("nm_unknown", config["language"], names=", ".join(unknown)))
@@ -1122,7 +1170,7 @@ def fetch_next(config, unfiltered=False, note=None):
             filters["fameArtists"] = famous_painters(filters["fameLevel"])
     QUEUE.mkdir(parents=True, exist_ok=True)
     current = current_painting()
-    repeats, current_matched, queued_matched = [], False, False
+    repeats, current_matched, queued_matched, dropped = [], False, False, 0
     for _ in range(SEARCH_ROUNDS):
         with timed("search"):
             if has_entity_filters(filters):
@@ -1131,6 +1179,9 @@ def fetch_next(config, unfiltered=False, note=None):
             else:
                 found = random_candidates(filters, config, screen)
                 exhaustive = False
+            before = len(found)
+            found = prefer_described(found, config)
+            dropped += before - len(found)
         for page, qid in found:
             name = f"commons-{page['pageid']}"
             state = claim(name, key)
@@ -1162,6 +1213,8 @@ def fetch_next(config, unfiltered=False, note=None):
         raise AllQueued(t("nm_all_queued", config["language"]))
     if current_matched:
         raise OnlyCurrent(t("nm_only_current", config["language"]))
+    if config["localized"] == "only" and dropped:
+        raise NoMatch(t("nm_localized", config["language"]))
     if has_entity_filters(filters):
         raise NoMatch(t("nm_too_small", config["language"]))
     if filters["yearFrom"] is not None or filters["yearTo"] is not None:
@@ -1339,7 +1392,8 @@ def status(config, error=None):
         "setAt": state.get("setAt", 0),
         "filter": override,
         "config": {key: config[key] for key in ("intervalMinutes", "notifyOnChange", "placard", "language",
-                                                "languageSetting", "fit", "fame")},
+                                                "languageSetting", "fit", "fame", "localized",
+                                                "localizedBy")},
         "ui": ui_strings(config["language"]),
         "error": error or state.get("error") or "",
     }

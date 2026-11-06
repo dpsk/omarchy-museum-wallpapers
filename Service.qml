@@ -82,16 +82,26 @@ Item {
   // The popup when a bar widget is on the bar (preferring the focused
   // monitor's bar), a notification otherwise.
   function showInfo() {
-    if (root.widgets.length === 0) {
-      notify()
-      return
-    }
+    var target = focusedWidget()
+    if (target) target.togglePopup()
+    else notify()
+  }
+
+  // The settings panel; needs the widget on the bar.
+  function showSettings() {
+    var target = focusedWidget()
+    if (target) target.toggleSettings()
+  }
+
+  // The bar widget on the focused monitor, or any, or null without one.
+  function focusedWidget() {
+    if (root.widgets.length === 0) return null
     var focused = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
     var target = root.widgets[0]
     for (var i = 0; i < root.widgets.length; i++) {
       if (root.widgets[i].screenName && root.widgets[i].screenName() === focused) target = root.widgets[i]
     }
-    target.togglePopup()
+    return target
   }
 
   Process {
@@ -134,6 +144,7 @@ Item {
 
     function next(): void { root.next() }
     function info(): void { root.showInfo() }
+    function settings(): void { root.showSettings() }
     function notify(): void { root.notify() }
     function open(): void { root.openArticle() }
     function keep(): void { root.keep() }
