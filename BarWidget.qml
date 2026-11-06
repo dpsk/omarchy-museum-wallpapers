@@ -24,19 +24,41 @@ BarWidget {
 
   property bool popupOpen: false
 
+  // Interface text from museum.py (strings.json, per the `language` setting);
+  // the English given here is used until the first status arrives.
+  readonly property var ui: status && status.ui ? status.ui : ({})
+  function tr(key, fallback, name) {
+    var text = root.ui[key] || fallback
+    // split/join rather than replace(): no "$&"-style patterns from names.
+    return name === undefined ? text : text.split("{name}").join(name)
+  }
+
   readonly property var intervals: [
-    { minutes: 15, label: "15m" }, { minutes: 30, label: "30m" }, { minutes: 60, label: "1h" },
-    { minutes: 180, label: "3h" }, { minutes: 360, label: "6h" }, { minutes: 1440, label: "1d" },
-    { minutes: 0, label: "Off" }
+    { minutes: 15, key: "interval_15", label: "15m" }, { minutes: 30, key: "interval_30", label: "30m" },
+    { minutes: 60, key: "interval_60", label: "1h" }, { minutes: 180, key: "interval_180", label: "3h" },
+    { minutes: 360, key: "interval_360", label: "6h" }, { minutes: 1440, key: "interval_1440", label: "1d" },
+    { minutes: 0, key: "interval_0", label: "Off" }
   ]
   readonly property int intervalMinutes: service && service.config.intervalMinutes !== undefined
     ? service.config.intervalMinutes : 60
   readonly property var fames: [
-    { value: "famous", label: "Famous" }, { value: "known", label: "Known" }, { value: "any", label: "Any" }
+    { value: "famous", key: "fame_famous", label: "Famous" }, { value: "known", key: "fame_known", label: "Known" },
+    { value: "any", key: "fame_any", label: "Any" }
   ]
   readonly property var fits: [
-    { value: "blur", label: "Blur" }, { value: "auto", label: "Auto" },
-    { value: "wall", label: "Wall" }, { value: "cover", label: "Fill" }
+    { value: "blur", key: "fit_blur", label: "Blur" }, { value: "auto", key: "fit_auto", label: "Auto" },
+    { value: "wall", key: "fit_wall", label: "Wall" }, { value: "cover", key: "fit_cover", label: "Fill" }
+  ]
+  // "Auto", then every interface language as a short code with its own name
+  // as the tooltip; the same list as UI_LANGUAGES in museum.py. A constant, so
+  // the settings rows are not rebuilt (and tooltips not dropped) by each status.
+  readonly property var languages: [
+    { value: "auto", key: "lang_auto", label: "Auto" },
+    { value: "en", label: "EN", tip: "English" }, { value: "ru", label: "RU", tip: "Русский" },
+    { value: "uk", label: "UK", tip: "Українська" }, { value: "de", label: "DE", tip: "Deutsch" },
+    { value: "fr", label: "FR", tip: "Français" }, { value: "es", label: "ES", tip: "Español" },
+    { value: "it", label: "IT", tip: "Italiano" }, { value: "nl", label: "NL", tip: "Nederlands" },
+    { value: "pl", label: "PL", tip: "Polski" }, { value: "pt", label: "PT", tip: "Português" }
   ]
 
   // Written to this widget's bar entry, like the Omarchy settings editor does;
@@ -108,7 +130,7 @@ BarWidget {
     }
     onEntered: if (root.bar) root.bar.showTooltip(root, root.info
       ? root.info.title + (root.info.artist ? " — " + root.info.artist : "")
-      : "Museum Wallpapers")
+      : root.tr("app", "Museum Wallpapers"))
     onExited: if (root.bar) root.bar.hideTooltip(root)
   }
 
@@ -149,7 +171,7 @@ BarWidget {
       Text {
         width: parent.width
         textFormat: Text.PlainText
-        text: root.info ? root.info.title : (root.active ? "" : "The current background is not from Museum Wallpapers")
+        text: root.info ? root.info.title : (root.active ? "" : root.tr("not_ours", "The current background is not from Museum Wallpapers"))
         color: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.subtitle
@@ -214,7 +236,7 @@ BarWidget {
 
         Button {
           iconText: "󰒭"
-          text: root.busy ? "Loading…" : "Next"
+          text: root.busy ? root.tr("loading", "Loading…") : root.tr("next", "Next")
           foreground: root.foreground
           enabled: !root.busy
           opacity: enabled ? 1.0 : 0.5
@@ -223,7 +245,7 @@ BarWidget {
 
         Button {
           iconText: "󰏌"
-          text: "Read more"
+          text: root.tr("read_more", "Read more")
           foreground: root.foreground
           visible: !!root.info
           onClicked: {
@@ -234,7 +256,7 @@ BarWidget {
 
         Button {
           iconText: "󰋑"
-          text: "Save"
+          text: root.tr("save", "Save")
           foreground: root.foreground
           visible: !!root.info && root.status.fromCache === true
           onClicked: if (root.service) root.service.keep()
@@ -247,7 +269,7 @@ BarWidget {
         visible: !!root.info && (!!root.info.artistId || !!root.info.movementId)
 
         Button {
-          text: root.info ? "More by " + root.info.artist : ""
+          text: root.info ? root.tr("more_by", "More by {name}", root.info.artist) : ""
           foreground: root.foreground
           fontSize: Style.font.bodySmall
           visible: !!root.info && !!root.info.artistId
@@ -255,7 +277,7 @@ BarWidget {
         }
 
         Button {
-          text: root.info && root.info.movement ? "More " + root.info.movement : ""
+          text: root.info && root.info.movement ? root.tr("more_of", "More {name}", root.info.movement) : ""
           foreground: root.foreground
           fontSize: Style.font.bodySmall
           visible: !!root.info && !!root.info.movementId && !!root.info.movement
@@ -269,66 +291,83 @@ BarWidget {
 
         Text {
           id: intervalLabel
-          anchors.verticalCenter: parent.verticalCenter
+          anchors.top: parent.top
+          topPadding: Style.space(4)
           textFormat: Text.PlainText
-          text: "Change every"
+          text: root.tr("change_every", "Change every")
           color: root.dim
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
           rightPadding: Style.space(4)
         }
 
-        Repeater {
-          model: root.intervals
+        Flow {
+          width: parent.width - intervalLabel.width - parent.spacing
+          spacing: Style.space(2)
 
-          Button {
-            required property var modelData
-            text: modelData.label
-            foreground: root.foreground
-            fontSize: Style.font.caption
-            horizontalPadding: Style.space(6)
-            selected: root.intervalMinutes === modelData.minutes
-            onClicked: root.setSetting("intervalMinutes", modelData.minutes)
+          Repeater {
+            model: root.intervals
+
+            Button {
+              required property var modelData
+              text: root.tr(modelData.key, modelData.label)
+              foreground: root.foreground
+              fontSize: Style.font.caption
+              horizontalPadding: Style.space(6)
+              selected: root.intervalMinutes === modelData.minutes
+              onClicked: root.setSetting("intervalMinutes", modelData.minutes)
+            }
           }
         }
       }
 
       Repeater {
-        // Artists (fame) and Fit, laid out like the interval row above.
+        // Artists (fame), Fit and Language, laid out like the interval row above.
         model: [
-          { key: "fame", title: "Artists", choices: root.fames, fallback: "famous" },
-          { key: "fit", title: "Fit", choices: root.fits, fallback: "blur" }
+          { key: "fame", configKey: "fame", titleKey: "artists", title: "Artists", choices: root.fames, fallback: "famous" },
+          { key: "fit", configKey: "fit", titleKey: "fit", title: "Fit", choices: root.fits, fallback: "blur" },
+          { key: "language", configKey: "languageSetting", titleKey: "language", title: "Language",
+            choices: root.languages, fallback: "auto" }
         ]
 
         Row {
           id: choiceRow
           required property var modelData
-          readonly property string current: root.service && root.service.config[modelData.key]
-            ? root.service.config[modelData.key] : modelData.fallback
+          readonly property string current: root.service && root.service.config[modelData.configKey]
+            ? root.service.config[modelData.configKey] : modelData.fallback
           width: parent.width
           spacing: Style.space(2)
 
           Text {
-            anchors.verticalCenter: parent.verticalCenter
+            id: choiceLabel
+            anchors.top: parent.top
+            topPadding: Style.space(4)
             width: intervalLabel.implicitWidth
             textFormat: Text.PlainText
-            text: choiceRow.modelData.title
+            text: root.tr(choiceRow.modelData.titleKey, choiceRow.modelData.title)
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
           }
 
-          Repeater {
-            model: choiceRow.modelData.choices
+          // Wraps: eleven language choices do not fit on one line.
+          Flow {
+            width: choiceRow.width - choiceLabel.width - choiceRow.spacing
+            spacing: Style.space(2)
 
-            Button {
-              required property var modelData
-              text: modelData.label
-              foreground: root.foreground
-              fontSize: Style.font.caption
-              horizontalPadding: Style.space(6)
-              selected: choiceRow.current === modelData.value
-              onClicked: root.setSetting(choiceRow.modelData.key, modelData.value)
+            Repeater {
+              model: choiceRow.modelData.choices
+
+              Button {
+                required property var modelData
+                text: modelData.key ? root.tr(modelData.key, modelData.label) : modelData.label
+                tooltipText: modelData.tip || ""
+                foreground: root.foreground
+                fontSize: Style.font.caption
+                horizontalPadding: Style.space(6)
+                selected: choiceRow.current === modelData.value
+                onClicked: root.setSetting(choiceRow.modelData.key, modelData.value)
+              }
             }
           }
         }
@@ -343,7 +382,7 @@ BarWidget {
           anchors.verticalCenter: parent.verticalCenter
           width: parent.width - clearButton.width - Style.space(6)
           textFormat: Text.PlainText
-          text: "Filter: " + root.filterText(root.activeFilter)
+          text: root.tr("filter", "Filter: {name}", root.filterText(root.activeFilter))
           color: root.dim
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
@@ -353,7 +392,7 @@ BarWidget {
         Button {
           id: clearButton
           iconText: "󰅖"
-          tooltipText: "Clear filter"
+          tooltipText: root.tr("clear_filter", "Clear filter")
           foreground: root.foreground
           onClicked: if (root.service) root.service.clearFilter()
         }

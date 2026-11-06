@@ -44,7 +44,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 PLUGIN_ID = "io.github.dpsk.museum-wallpapers"
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 USER_AGENT = f"omarchy-museum-wallpapers/{VERSION} (https://github.com/dpsk/omarchy-museum-wallpapers)"
 
 COMMONS_API = os.environ.get("MUSEUM_WALLPAPERS_COMMONS_API", "https://commons.wikimedia.org/w/api.php")
@@ -96,7 +96,8 @@ GENRES = {
 
 DEFAULTS = {
     "intervalMinutes": 60,
-    "language": "en",
+    # "auto" follows the system language (LC_ALL / LC_MESSAGES / LANG).
+    "language": "auto",
     "filters": {"yearFrom": None, "yearTo": None, "artists": [], "movements": [], "genres": []},
     "notifyOnChange": False,
     "placard": "bottom-right",
@@ -132,6 +133,51 @@ QUEUE = CACHE / "queue"
 DISPLAY = CACHE / "display"
 CURRENT_LINK = HOME / ".local/state/omarchy/current/background"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+# Interface text (strings.json, next to this file): popup, notifications and
+# messages follow the `language` setting; a language without a table gets
+# English, while Wikipedia titles and stories still come in that language.
+def load_strings():
+    """The interface tables; English labels from the code (via t()'s fallback
+    to the key) if strings.json is missing or broken, rather than no plugin."""
+    try:
+        tables = json.loads((Path(__file__).resolve().parent / "strings.json").read_text(encoding="utf-8"))
+        if isinstance(tables, dict) and isinstance(tables.get("en"), dict):
+            return tables
+    except (OSError, ValueError) as exc:
+        print(f"museum-wallpapers: strings.json unreadable, interface in English keys: {exc}", file=sys.stderr)
+    return {"en": {}}
+
+
+STRINGS = load_strings()
+# The interface languages, in their own names (BarWidget.qml offers the same list).
+UI_LANGUAGES = {
+    "en": "English", "ru": "Русский", "uk": "Українська", "de": "Deutsch", "fr": "Français",
+    "es": "Español", "it": "Italiano", "nl": "Nederlands", "pl": "Polski", "pt": "Português",
+}
+
+
+def system_language():
+    """The language of the session's locale, as a Wikipedia code ("en" if unknown)."""
+    for var in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        value = os.environ.get(var, "")
+        if not value:
+            continue
+        # The first variable set decides, as in POSIX; C or POSIX means English.
+        code = re.match(r"[a-z]{2,3}(?=[_.@]|$)", value.lower())
+        return code.group(0) if code and value not in ("C", "POSIX") and not value.startswith("C.") else "en"
+    return "en"
+
+
+def ui_strings(language):
+    """The interface text for a language, English where it has none."""
+    return {**STRINGS["en"], **STRINGS.get(str(language).split("-")[0], {})}
+
+
+def t(key, language="en", **values):
+    text = ui_strings(language).get(key, key)
+    return text.format(**values) if values else text
 
 
 class NoMatch(Exception):
@@ -214,7 +260,9 @@ def normalize_config(entry):
             config[key] = float(config[key])
         except (TypeError, ValueError):
             config[key] = DEFAULTS[key]
-    config["language"] = re.sub(r"[^a-z-]", "", str(config["language"]).lower()) or "en"
+    # `languageSetting` is what was picked ("auto" included), `language` the resolved code.
+    config["languageSetting"] = re.sub(r"[^a-z-]", "", str(config["language"]).lower()) or "auto"
+    config["language"] = system_language() if config["languageSetting"] == "auto" else config["languageSetting"]
     config["notifyOnChange"] = config["notifyOnChange"] is True
     if not isinstance(config["placard"], str) or config["placard"] not in PLACARDS:
         config["placard"] = DEFAULTS["placard"]
@@ -754,7 +802,7 @@ def random_candidates(filters, config, screen):
 def filtered_candidates(filters, config, screen):
     pool = entity_pool(filters)
     if not pool:
-        raise NoMatch("no paintings match the filter")
+        raise NoMatch(t("nm_no_match", config["language"]))
     sample = random.sample(pool, min(len(pool), POOL_SAMPLE))
     infos = image_infos([title for _, title in sample])
     result = []
@@ -763,7 +811,7 @@ def filtered_candidates(filters, config, screen):
         if page and usable(title, page["imageinfo"][0]["width"], page["imageinfo"][0]["height"], config, screen):
             result.append((page, qid))
     if not result and len(pool) <= POOL_SAMPLE:
-        raise NoMatch(f"none of the {len(pool)} matching paintings is large enough for this screen")
+        raise NoMatch(t("nm_pool_small", config["language"], n=len(pool)))
     return result
 
 
@@ -932,7 +980,7 @@ def describe(page, qid, language):
     if not info["summary"]:
         summary, url = _summary(article(artist, language))
         if summary:
-            info["summary"], info["url"] = "About the artist: " + summary, url or info["url"]
+            info["summary"], info["url"] = t("about_artist", language) + summary, url or info["url"]
     return info
 
 
@@ -1066,7 +1114,7 @@ def fetch_next(config, unfiltered=False, note=None):
         filters = normalize_filters({})
     filters, unknown = resolve_filters(filters, config["language"])
     if unknown:
-        raise NoMatch("unknown filter value: " + ", ".join(unknown))
+        raise NoMatch(t("nm_unknown", config["language"], names=", ".join(unknown)))
     # An explicit artist (or "More by …") is shown however famous they are.
     if config["fame"] != "any" and not filters["artists"]:
         filters["fameLevel"] = FAME[config["fame"]]
@@ -1111,14 +1159,14 @@ def fetch_next(config, unfiltered=False, note=None):
         if dest:
             return dest
     if queued_matched:
-        raise AllQueued("every matching painting is already queued")
+        raise AllQueued(t("nm_all_queued", config["language"]))
     if current_matched:
-        raise OnlyCurrent("the only matching painting is already showing")
+        raise OnlyCurrent(t("nm_only_current", config["language"]))
     if has_entity_filters(filters):
-        raise NoMatch("no matching painting is large enough for this screen")
+        raise NoMatch(t("nm_too_small", config["language"]))
     if filters["yearFrom"] is not None or filters["yearTo"] is not None:
-        raise NoMatch("no painting from these years turned up among random scans")
-    raise NoMatch("no suitable painting found")
+        raise NoMatch(t("nm_years", config["language"]))
+    raise NoMatch(t("nm_none", config["language"]))
 
 
 def queue_items(config):
@@ -1290,8 +1338,9 @@ def status(config, error=None):
         "info": info_for(painting, config) if ours else None,
         "setAt": state.get("setAt", 0),
         "filter": override,
-        "config": {key: config[key] for key in ("intervalMinutes", "notifyOnChange", "placard", "language", "fit",
-                                                "fame")},
+        "config": {key: config[key] for key in ("intervalMinutes", "notifyOnChange", "placard", "language",
+                                                "languageSetting", "fit", "fame")},
+        "ui": ui_strings(config["language"]),
         "error": error or state.get("error") or "",
     }
 
@@ -1462,15 +1511,15 @@ def switch(config):
             record_current(config)
             return ""
         except NoMatch as exc:
-            error, error_kind = f"Filter: {exc}; showing a random painting", "filter"
+            error, error_kind = t("err_filter", config["language"], detail=exc), "filter"
             try:
                 image = fetch_next(config, unfiltered=True)
             except NoMatch as inner:
-                error = f"Filter: {exc}; and no other painting either: {inner}"
+                error = t("err_filter_nothing", config["language"], detail=exc, inner=inner)
             except Exception as inner:  # noqa: BLE001 - any failure falls back below
-                error, error_kind = f"Filter: {exc}; and could not reach Wikimedia: {inner}", "network"
+                error, error_kind = t("err_filter_network", config["language"], detail=exc, inner=inner), "network"
         except Exception as exc:  # noqa: BLE001 - truncated reads, HTTP errors, bad JSON
-            error, error_kind = f"Could not reach Wikimedia: {exc}", "network"
+            error, error_kind = t("err_network", config["language"], detail=exc), "network"
     report(error, error_kind)
     if not image:
         local_fallback(config, error, error_kind)
@@ -1483,13 +1532,13 @@ def switch(config):
         with timed("show"):
             shown = show(target, config)
     except (OSError, subprocess.SubprocessError) as exc:
-        error, error_kind = f"Could not set the background: {exc}", "background"
+        error, error_kind = t("err_background", config["language"], detail=exc), "background"
         report(error, error_kind)
         record_current(config, error, error_kind)
         return error
     filter_error = read_json(target.with_suffix(".json"), {}).get("filterError")
     if filter_error and not error:
-        error, error_kind = f"Filter: {filter_error}; showing a random painting", "filter"
+        error, error_kind = t("err_filter", config["language"], detail=filter_error), "filter"
         report(error, error_kind)
     record(shown, error, error_kind, original=target, fit=config["fit"])
     prune(config, previous)
@@ -1671,7 +1720,7 @@ def cmd_notify(config, _args):
     body = "\n".join(x for x in (byline(info), info.get("museum"), "", plain(info.get("summary"), 320)) if x is not None)
     # The Omarchy notification body is StyledText, so escape markup characters.
     result = subprocess.run(
-        ["notify-send", "-a", "Museum Wallpapers", "-t", "15000", "-A", "open=Read more", "--",
+        ["notify-send", "-a", "Museum Wallpapers", "-t", "15000", "-A", f"open={t('read_more', config['language'])}", "--",
          info["title"], html.escape(body.strip(), quote=False)],
         capture_output=True, text=True,
     )
@@ -1714,7 +1763,7 @@ def keep(config):
     folder.mkdir(parents=True, exist_ok=True)
     index = saved_index(config)
     if info.get("id") and any(saved.get("id") == info["id"] for saved in index.values() if isinstance(saved, dict)):
-        notify("Already in your collection", info["title"])
+        notify(t("already_saved", config["language"]), info["title"])
         return
     # Letters of any script are kept; anything else becomes a dash.
     slug = re.sub(r"[\W_]+", "-", f"{info.get('artist', '')} {info['title']}".lower()).strip("-")[:80] or image.stem
@@ -1729,7 +1778,7 @@ def keep(config):
         credits.write_text("# Saved paintings\n\n| File | Painting |\n| --- | --- |\n")
     with open(credits, "a") as out:
         out.write(credit_line(dest.name, info))
-    notify("Saved to your collection", info["title"])
+    notify(t("saved", config["language"]), info["title"])
 
 
 def parse_years(text):

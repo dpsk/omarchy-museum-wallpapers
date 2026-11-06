@@ -84,7 +84,7 @@ bar widget entry (which Omarchy's widget settings editor writes) or an entry in
           "intervalMinutes": 60,
           "placard": "bottom-right",
           "notifyOnChange": false,
-          "language": "en",
+          "language": "auto",
           "saveDir": "~/Pictures/Wallpapers/Museum",
           "filters": { "movements": ["Impressionism"], "genres": ["landscape"] }
         }
@@ -99,7 +99,7 @@ bar widget entry (which Omarchy's widget settings editor writes) or an entry in
 | `intervalMinutes` | `60` | Minutes between paintings; `0` changes only on demand. Also settable from the popup. |
 | `placard` | `"bottom-right"` | `off`, `bottom-right`, `bottom-left`, `top-right` or `top-left`. |
 | `notifyOnChange` | `false` | Notify each time the painting changes. |
-| `language` | `"en"` | Wikipedia language for titles and summaries (`de`, `fr`, `ru`, …); falls back to English. |
+| `language` | `"auto"` | `auto` follows the system language (`LANG`). Wikipedia language for titles and summaries (`de`, `fr`, `ru`, …), falling back to English. The interface (popup, notifications, messages) speaks English, Русский, Українська, Deutsch, Français, Español, Italiano, Nederlands, Polski and Português; other languages get an English interface. Also settable from the popup. |
 | `saveDir` | `~/Pictures/Wallpapers/Museum` | Where **Save** copies paintings (with a `CREDITS.md` line). Also the offline fallback: without network, a painting from here or from the download cache is shown. |
 | `filters` | none | See below. |
 | `prefetchCount` | `6` | Paintings downloaded ahead, so several **Next** presses in a row are instant. |

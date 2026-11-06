@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import subprocess
 import tempfile
 import threading
@@ -11,6 +12,11 @@ import time
 import unittest
 from pathlib import Path
 from unittest import mock
+
+# The interface follows the system language; the tests expect English.
+for _var in ("LC_ALL", "LC_MESSAGES"):
+    os.environ.pop(_var, None)
+os.environ["LANG"] = "C.UTF-8"
 
 ROOT = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location("museum", ROOT / "museum.py")
@@ -223,6 +229,45 @@ class TextTest(unittest.TestCase):
 
 
 class EdgeCaseTest(unittest.TestCase):
+    def test_broken_strings_fall_back_to_english(self):
+        with mock.patch.object(museum.json, "loads", side_effect=ValueError("broken")), \
+             contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(museum.load_strings(), {"en": {}})
+        with mock.patch.object(museum, "STRINGS", {"en": {}}):
+            self.assertEqual(museum.t("next", "ru"), "next")
+
+    def test_c_locale_means_english(self):
+        with mock.patch.dict(os.environ, {"LC_ALL": "C", "LC_MESSAGES": "", "LANG": "ru_RU.UTF-8"}):
+            self.assertEqual(museum.system_language(), "en")
+        with mock.patch.dict(os.environ, {"LC_ALL": "", "LC_MESSAGES": "uk_UA.UTF-8", "LANG": "en_US.UTF-8"}):
+            self.assertEqual(museum.system_language(), "uk")
+
+    def test_popup_offers_every_interface_language(self):
+        qml = (ROOT / "BarWidget.qml").read_text()
+        block = qml[qml.index("readonly property var languages"):qml.index("// Written to this widget")]
+        offered = re.findall(r'value: "([a-z]+)", label: "[A-Z]{2}"', block)
+        self.assertEqual(offered, list(museum.UI_LANGUAGES))
+
+    def test_interface_language(self):
+        with mock.patch.dict(os.environ, {"LC_ALL": "", "LC_MESSAGES": "", "LANG": "ru_RU.UTF-8"}):
+            self.assertEqual(museum.system_language(), "ru")
+            auto = museum.normalize_config({})
+        self.assertEqual((auto["languageSetting"], auto["language"]), ("auto", "ru"))
+        with mock.patch.dict(os.environ, {"LC_ALL": "", "LC_MESSAGES": "", "LANG": "C.UTF-8"}):
+            self.assertEqual(museum.system_language(), "en")
+        self.assertEqual(museum.normalize_config({"language": "de"})["language"], "de")
+        self.assertEqual(museum.t("more_by", "ru", name="Моне"), "Ещё Моне")
+        self.assertEqual(museum.t("next", "de"), "Weiter")
+        self.assertEqual(museum.t("next", "pt-br"), "Próxima")
+        self.assertEqual(museum.t("next", "ja"), "Next")  # no Japanese interface: English
+        # Every language offered has a full table with the same placeholders.
+        self.assertEqual(set(museum.UI_LANGUAGES), set(museum.STRINGS))
+        for language, table in museum.STRINGS.items():
+            self.assertEqual(set(table), set(museum.STRINGS["en"]), language)
+            for key, text in table.items():
+                self.assertEqual(sorted(re.findall(r"\{(\w+)\}", text)),
+                                 sorted(re.findall(r"\{(\w+)\}", museum.STRINGS["en"][key])), (language, key))
+
     def test_detached_helpers_without_a_journal(self):
         with mock.patch.object(museum.shutil, "which", return_value=None), \
              mock.patch.object(museum.subprocess, "Popen") as popen:

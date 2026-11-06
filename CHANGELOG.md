@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3 — 2026-11-06
+
+- The interface speaks ten languages: English, Русский, Українська, Deutsch, Français, Español, Italiano, Nederlands, Polski and Português. The popup,
+  notifications and messages follow the `language` setting, which now
+  defaults to `auto` (the system language) and can be picked in the popup.
+  Wikipedia titles and stories still come in any language Wikipedia has.
+
 ## 0.1.2 — 2026-11-06
 
 - Next is fast: paintings are downloaded two at a time, framed ahead of time,
